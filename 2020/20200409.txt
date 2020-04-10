@@ -1,0 +1,11 @@
+Yestoday scanner www.haiqianghm.com not find out any Vulnerability.
+Today begin scanner another web site.
+Can use search for baidu.com or google.com with "inurl:php?id=" "phpStudy 探针 2014"
+Use baidu.com with inurl:php?id= find out http://www.rayseasc.com web site.
+This site use discuz x3.2 and phpstudy 2014 and phpmyadmin
+The Discuz only use themselves develpo plugin.
+Finded phpinfo infomation http://www.rayseasc.com/phpinfo.php
+Them use oracle database on them web site.
+
+But I cann't find any Velnerability. 
+I need more study of hacker attack.
