@@ -30,4 +30,18 @@ theHarverster -d google.com -l 10 -b baidu
 ### Whois
 whois google.com
 ### netcraft  http://news.netcraft.com
-### host
+### host, nslookup and dig
+host -a wy100.com
+nslookup -type=any wy100.com
+dig wy100.com -t any
+### 通过电子邮件服务器提取信息
+向目标邮件服务器发送一封包含有类似clac.exe附件的邮件，等待服务器退信
+退信的邮件会通常会包含杀毒软件的厂商，版本等信息；
+还应该详细检查邮件头信息
+###MetaGoofil  提取元数据
+metagoofil -d wy100.com -o wy100.com -t pdf
+###SEAT 进行多个搜索引擎同时搜索
+###google hacking database
+www.hackersforcharity.org
+https://www.exploit-db.com/google-hacking-database
+###Maltego 聚合公共数据库信息
