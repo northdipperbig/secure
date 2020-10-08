@@ -34,3 +34,34 @@ pidfile=$panel_path/logs/panel.pid
         echo -e "=================================================================="
         ;;
 ```
+
+## 安装脚本设置函数
+```bash
+Set_Bt_Panel(){
+	password=$(cat /dev/urandom | head -n 16 | md5sum | head -c 8)
+	sleep 1
+	admin_auth="/www/server/panel/data/admin_path.pl"
+	if [ ! -f ${admin_auth} ];then
+		auth_path=$(cat /dev/urandom | head -n 16 | md5sum | head -c 8)
+		echo "/${auth_path}" > ${admin_auth}
+	fi
+	auth_path=$(cat ${admin_auth})
+	cd ${setup_path}/server/panel/
+	/etc/init.d/bt start
+	$python_bin -m py_compile tools.py
+	$python_bin tools.py username
+	username=$($python_bin tools.py panel ${password})
+	cd ~
+	echo "${password}" > ${setup_path}/server/panel/default.pl
+	chmod 600 ${setup_path}/server/panel/default.pl
+	sleep 3
+	/etc/init.d/bt restart 	
+	sleep 3
+	isStart=$(ps aux |grep 'BT-Panel'|grep -v grep|awk '{print $2}')
+	LOCAL_CURL=$(curl 127.0.0.1:8888/login 2>&1 |grep -i html)
+	if [ -z "${isStart}" ] && [ -z "${LOCAL_CURL}" ];then
+		/etc/init.d/bt 22
+		Red_Error "ERROR: The BT-Panel service startup failed."
+	fi
+}
+```
