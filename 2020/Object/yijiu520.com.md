@@ -31,3 +31,6 @@ Not get any password
 
 # use hydra attack ssh password
 - Get password failed.
+
+# PHP CMS
+- DedeCMS
